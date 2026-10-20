@@ -24,11 +24,16 @@ RUN apt-get install -y \
     clang \
     clang-format \
     clang-tidy \
+    qtwayland5 \
     ros-humble-turtlesim \
     ros-humble-rqt*
 
 RUN echo "source /opt/ros/humble/setup.bash" >> /home/$USERNAME/.bashrc
-ENV SHELL /bin/bash
+ENV SHELL=/bin/bash
+ENV USER=$USERNAME
+
+# Mount point for the host Wayland socket (keep ownership in sync with the user)
+RUN install -d -m 700 -o $USER_UID -g $USER_GID /tmp/xdg-runtime
 
 # Set the default user
 USER $USERNAME

@@ -4,22 +4,31 @@ services:
       context: .
       args:
         USERNAME: ${USER:-ros2user}
-        USER_UID: ${UID:-1000}
-        USER_GID: ${GID:-1000}
+        USER_UID: 1000
+        USER_GID: 1000
     image: ros2-humble-dev:latest
     container_name: ros2-workspace
     network_mode: host
     ipc: host
     pid: host
+    # Rootless podman
+    userns_mode: keep-id:uid=1000,gid=1000
+    # SELinux: allow access to the X11/Wayland sockets and ./src.
+    security_opt:
+      - label:disable
     stdin_open: true
     tty: true
     working_dir: /home/ws
-    user: ${USER:-ros2user}
 
     environment:
       - ROS_DOMAIN_ID=42
       - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
-      - DISPLAY=:0
+      # XWayland for X11-only apps (turtlesim links Xlib directly)
+      - DISPLAY=${DISPLAY:-:0}
+      # Native Wayland for Qt apps (needs qtwayland5 in the image)
+      - WAYLAND_DISPLAY=wayland-0
+      - XDG_RUNTIME_DIR=/tmp/xdg-runtime
+      - QT_QPA_PLATFORM=wayland;xcb
       - LIBGL_ALWAYS_SOFTWARE=1
 
     volumes:
@@ -29,11 +38,11 @@ services:
       # Source code overlays on top
       - ./src:/home/ws/src
 
-      # X11 for GUI applications
-      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Wayland socket
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/${WAYLAND_DISPLAY:-wayland-0}:/tmp/xdg-runtime/wayland-0
 
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      # XWayland socket
+      - /tmp/.X11-unix:/tmp/.X11-unix
 
     command: /bin/bash
 

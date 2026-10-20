@@ -20,7 +20,7 @@ Use `ws_linux` or `ws_mac` according to your operating system. Each workspace ha
 
 ```text
 ws_linux/
-├── compose.yml          # Docker Compose configuration
+├── compose.yml          # Compose configuration (Wayland + rootless Podman)
 ├── Dockerfile           # Container image definition
 └── src/                 # Your ROS 2 packages go here
 
@@ -30,7 +30,7 @@ ws_mac/
 └── src/                 # Your ROS 2 packages go here
 ```
 
-Build artifacts (`build/`, `install/`, `log/`) are stored in a Docker volume for persistence and performance.
+Build artifacts (`build/`, `install/`, `log/`) are stored in a named volume for persistence and performance.
 
 ---
 
@@ -38,11 +38,14 @@ Build artifacts (`build/`, `install/`, `log/`) are stored in a Docker volume for
 
 Before you use this repository, make sure you have:
 
-* Docker installed (with Docker Compose)
-* For Linux: X11 display server
-* For macOS: XQuartz installed
+* Podman 4.x or newer, rootless (the Linux workspace expects it)
+* A compose provider: `podman compose` (uses docker-compose against the Podman socket) or podman-compose
+* For Linux: a Wayland session with XWayland available (`echo $WAYLAND_DISPLAY` and `echo $DISPLAY` should both be set)
 
-Basic familiarity with ROS 2 and Docker concepts is recommended.
+> [!NOTE]
+> The Linux workspace works with any host uid/gid: rootless Podman's `keep-id:uid=1000,gid=1000` mapping (set in `ws_linux/compose.yml`) maps your host user onto the container's `ros2user` (uid/gid 1000), so files created in `./src` keep your host ownership and GUI sockets stay accessible.
+
+Basic familiarity with ROS 2 and Podman concepts is recommended.
 
 ---
 
@@ -57,22 +60,22 @@ Basic familiarity with ROS 2 and Docker concepts is recommended.
    cd docker-ros2-workspace/ws_linux
    ```
 
-2. Allow Docker to access your X server (for GUI applications):
+2. Allow XWayland to accept connections from the container (once per login session):
 
    ```bash
-   xhost +local:docker
+   xhost +si:localuser:$USER
    ```
 
 3. Start the container:
 
    ```bash
-   docker compose up -d
+   podman compose up -d
    ```
 
 4. Enter the container:
 
    ```bash
-   docker compose exec ros2 /bin/bash
+   podman compose exec ros2 /bin/bash
    ```
 
 5. Verify the environment:
@@ -152,25 +155,25 @@ source install/setup.bash
 From your host machine:
 
 ```bash
-docker compose exec ros2 /bin/bash
+podman compose exec ros2 /bin/bash
 ```
 
 ### Stop the container
 
 ```bash
-docker compose stop
+podman compose stop
 ```
 
 ### Stop and remove the container
 
 ```bash
-docker compose down
+podman compose down
 ```
 
 ### Remove the container and build cache
 
 ```bash
-docker compose down -v
+podman compose down -v
 ```
 
 ---
@@ -188,16 +191,16 @@ To use a different ROS 2 distribution (such as Jazzy or Rolling):
 2. Rebuild the image:
 
    ```bash
-   docker compose build
+   podman compose build
    ```
 
 3. Restart the container:
 
    ```bash
-   docker compose up -d
+   podman compose up -d
    ```
 
 > [!NOTE]
-> If you want to start with a clean build cache, remove the volume first with `docker compose down -v`.
+> If you want to start with a clean build cache, remove the volume first with `podman compose down -v`.
 
 ---
